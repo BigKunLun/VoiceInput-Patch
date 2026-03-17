@@ -31,24 +31,46 @@ TypeService               ->  CGEvent keyboardSetUnicodeString 逐字键入
 
 预设支持 Ghostty、Terminal、iTerm2、Alacritty、WezTerm、kitty、Warp，可通过菜单栏界面勾选。
 
-## 构建与安装
+## 安装
+
+### 方式一：下载预编译版本
+
+从 [Releases](https://github.com/5Iris5/VoiceInput-Patch/releases) 下载最新的 `VoiceInput.app.zip`，解压后将 `VoiceInput.app` 拖入应用程序文件夹。
+
+### 方式二：从源码构建
 
 ```bash
 # 需要 Xcode Command Line Tools
 # 如未安装: xcode-select --install
 
-# 克隆并构建
 git clone https://github.com/5Iris5/VoiceInput-Patch.git
 cd VoiceInput-Patch
 ./build.sh
 
-# 运行
 open VoiceInput.app
 ```
 
+### 无法打开？
+
+由于应用未经 Apple 公证，macOS 可能阻止打开。任选一种方式解决：
+
+**方式 A：命令行解除隔离（推荐）**
+
+```bash
+xattr -cr VoiceInput.app
+```
+
+**方式 B：右键打开**
+
+右键点击 `VoiceInput.app` → 选择「打开」→ 在弹窗中点击「打开」
+
+**方式 C：系统设置放行**
+
+打开应用被阻止后，前往 系统设置 → 隐私与安全性 → 下方会显示「已阻止 VoiceInput」→ 点击「仍要打开」
+
 ### 授予辅助功能权限
 
-系统设置 -> 隐私与安全性 -> 辅助功能 -> 勾选 VoiceInput
+系统设置 → 隐私与安全性 → 辅助功能 → 添加并勾选 VoiceInput
 
 ## 使用
 
