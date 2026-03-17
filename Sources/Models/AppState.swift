@@ -24,6 +24,7 @@ class AppState: ObservableObject {
 
         interceptService = InterceptService(
             whitelist: settings.enabledTerminalsLowercased,
+            bundleIdWhitelist: settings.enabledBundleIds,
             onIntercept: { [weak self] text in
                 DispatchQueue.main.async {
                     self?.handleIntercept(text)

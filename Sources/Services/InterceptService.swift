@@ -17,11 +17,13 @@ class InterceptService {
     private var tap: CFMachPort?
     private var runLoopSource: CFRunLoopSource?
     private var whitelist: Set<String>
+    private var bundleIdWhitelist: Set<String>
     private var onIntercept: (String) -> Void
     private var isPaused = false
 
-    init(whitelist: Set<String>, onIntercept: @escaping (String) -> Void) {
+    init(whitelist: Set<String>, bundleIdWhitelist: Set<String>, onIntercept: @escaping (String) -> Void) {
         self.whitelist = whitelist
+        self.bundleIdWhitelist = bundleIdWhitelist
         self.onIntercept = onIntercept
     }
 
@@ -104,7 +106,7 @@ class InterceptService {
         let appName = (app.localizedName ?? "").lowercased()
         let bundleId = (app.bundleIdentifier ?? "").lowercased()
 
-        guard whitelist.contains(appName) || whitelist.contains(where: { bundleId.contains($0) }) else {
+        guard whitelist.contains(appName) || bundleIdWhitelist.contains(bundleId) else {
             log("⚠️ 白名单不匹配: \(appName) / \(bundleId)")
             return Unmanaged.passUnretained(event)
         }
