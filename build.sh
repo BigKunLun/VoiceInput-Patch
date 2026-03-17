@@ -50,8 +50,15 @@ EOF
 
 chmod +x "${MACOS_DIR}/${APP_NAME}"
 
-# 代码签名（ad-hoc签名，保持应用身份稳定，避免每次重新授权辅助功能权限）
+# 代码签名：优先使用本地自签名证书（身份固定，辅助功能权限不会失效），
+# 找不到则 fallback 到 ad-hoc 签名（适用于 CI / 其他人的机器）
 echo "🔏 签名应用..."
-codesign --force --deep --sign "VoiceInput Dev" "${APP_DIR}"
+if security find-identity -v -p codesigning 2>/dev/null | grep -q "VoiceInput Dev"; then
+    codesign --force --deep --sign "VoiceInput Dev" "${APP_DIR}"
+    echo "   使用证书: VoiceInput Dev"
+else
+    codesign --force --deep --sign - "${APP_DIR}"
+    echo "   使用 ad-hoc 签名（未找到 VoiceInput Dev 证书）"
+fi
 
 echo "✅ 构建完成: ${APP_DIR}"
