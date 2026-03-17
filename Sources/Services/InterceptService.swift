@@ -3,23 +3,14 @@
 //  VoiceInput
 //
 
-import Foundation
+import os.log
 import Cocoa
 import CoreGraphics
 
+private let logger = Logger(subsystem: "com.bigkunlun.voiceinput", category: "intercept")
+
 private func log(_ msg: String) {
-    let timestamp = ISO8601DateFormatter().string(from: Date())
-    let line = "[\(timestamp)] \(msg)\n"
-    let logPath = "/tmp/voiceinput_debug.log"
-    if let data = line.data(using: .utf8) {
-        if let fh = FileHandle(forWritingAtPath: logPath) {
-            fh.seekToEndOfFile()
-            fh.write(data)
-            fh.closeFile()
-        } else {
-            FileManager.default.createFile(atPath: logPath, contents: data)
-        }
-    }
+    logger.info("\(msg, privacy: .public)")
 }
 
 class InterceptService {
@@ -124,7 +115,7 @@ class InterceptService {
             return Unmanaged.passUnretained(event)
         }
 
-        log("📋 拦截 Cmd+V: \(content.count) 字 | 预览: \(content.prefix(30))")
+        log("拦截 Cmd+V: \(content.count) 字")
 
         // 暂停 tap，避免干扰后续键入
         pause()
