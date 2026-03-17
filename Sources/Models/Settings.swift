@@ -58,7 +58,7 @@ class Settings: ObservableObject {
         var ids = Set<String>()
         for terminal in enabledTerminals {
             if let bundleId = TERMINAL_BUNDLE_IDS[terminal.lowercased()] {
-                ids.insert(bundleId)
+                ids.insert(bundleId.lowercased())
             }
         }
         return ids

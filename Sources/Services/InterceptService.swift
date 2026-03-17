@@ -19,6 +19,7 @@ class InterceptService {
     private var whitelist: Set<String>
     private var bundleIdWhitelist: Set<String>
     private var onIntercept: (String, @escaping () -> Void) -> Void
+    /// 所有对 isPaused 的读写都在主线程 RunLoop 中进行（event tap 回调 + DispatchQueue.main）
     private var isPaused = false
 
     init(whitelist: Set<String>, bundleIdWhitelist: Set<String>, onIntercept: @escaping (String, @escaping () -> Void) -> Void) {
@@ -50,7 +51,7 @@ class InterceptService {
         runLoopSource = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, createdTap, 0)
         CFRunLoopAddSource(CFRunLoopGetCurrent(), runLoopSource, .commonModes)
         CGEvent.tapEnable(tap: createdTap, enable: true)
-        log("✅ InterceptService 已启动，白名单: \(whitelist)")
+        log("✅ InterceptService 已启动，白名单: \(whitelist)，bundleId: \(bundleIdWhitelist)")
     }
 
     func stop() {
