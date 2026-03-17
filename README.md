@@ -1,24 +1,36 @@
-# 闪电说 → Claude Code 语音输入补丁
+# VoiceInput-Patch — 终端语音输入补丁
 
 ## 问题
 
-闪电说通过「剪贴板 + Cmd+V」粘贴文本，Claude Code 检测到多行粘贴会触发 Bracket Paste Mode 折叠显示，无法正常输入。
+许多语音输入法（闪电说、讯飞语音等）通过「剪贴板 + Cmd+V」粘贴识别结果。在 Claude Code 等终端应用中，多行粘贴会触发 Bracket Paste Mode 折叠显示，导致语音输入内容无法正常展开。
+
+## 适用范围
+
+### 语音输入法
+
+兼容所有通过「写入剪贴板 + 模拟 Cmd+V」工作的语音输入法（闪电说、讯飞语音等）。
+
+> 通过输入法框架直接输入的方式（如 macOS 系统听写）本身就是逐字输入，不会触发折叠，无需本工具。
+
+### 终端
+
+默认支持 Ghostty、Terminal、iTerm2、Alacritty、WezTerm、kitty、Warp，也可通过 `--whitelist` 指定任意终端应用。
 
 ## 解决方案
 
 通过 CGEvent Tap 拦截 Cmd+V，吞掉粘贴事件，改用 CGEvent Unicode 逐字键入，绕过粘贴检测。
 
 ```
-闪电说 → 写入剪贴板 + Cmd+V
-                             ↓
-intercept_paste (Swift)  →  CGEvent Tap 拦截 Cmd+V → 吞掉 → 读剪贴板 → base64 → stdout
-                             ↓
-voice_type.py (Python)   →  读 stdout → 换行替换空格 → 调用 type_unicode
-                             ↓
-type_unicode (Swift)     →  CGEvent keyboardSetUnicodeString 逐字输入
-                             → post 到 .cgAnnotatedSessionEventTap（绕过 tap 干扰）
-                             ↓
-终端 / Claude Code       →  收到逐字键盘输入（非粘贴）→ 不触发折叠
+语音输入法 → 写入剪贴板 + Cmd+V
+                                ↓
+intercept_paste (Swift)     →  CGEvent Tap 拦截 Cmd+V → 吞掉 → 读剪贴板 → base64 → stdout
+                                ↓
+voice_type.py (Python)      →  读 stdout → 换行替换空格 → 调用 type_unicode
+                                ↓
+type_unicode (Swift)        →  CGEvent keyboardSetUnicodeString 逐字输入
+                                → post 到 .cgAnnotatedSessionEventTap（绕过 tap 干扰）
+                                ↓
+终端 / Claude Code          →  收到逐字键盘输入（非粘贴）→ 不触发折叠
 ```
 
 ### 关键技术点
@@ -58,7 +70,7 @@ python3 voice_type.py
 python3 voice_type.py --once
 ```
 
-启动后正常使用闪电说即可。非白名单应用中的粘贴不受影响。
+启动后正常使用语音输入即可。非白名单应用中的粘贴不受影响。
 
 ## 推荐 alias
 
