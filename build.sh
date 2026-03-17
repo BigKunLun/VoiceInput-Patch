@@ -52,6 +52,6 @@ chmod +x "${MACOS_DIR}/${APP_NAME}"
 
 # 代码签名（ad-hoc签名，保持应用身份稳定，避免每次重新授权辅助功能权限）
 echo "🔏 签名应用..."
-codesign --force --deep --sign - "${APP_DIR}"
+codesign --force --deep --sign "VoiceInput Dev" "${APP_DIR}"
 
 echo "✅ 构建完成: ${APP_DIR}"
