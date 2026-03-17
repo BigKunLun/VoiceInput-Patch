@@ -1,0 +1,6 @@
+# 编译产物（可从 .swift 源码重新编译）
+intercept_paste
+type_unicode
+
+# 运行日志
+voice_type.log
