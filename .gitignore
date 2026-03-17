@@ -1,9 +1,8 @@
-# 编译产物（可从源码重新编译）
-intercept_paste
-type_unicode
-
 # Swift Package Manager
 .build/
+
+# 构建产物
+VoiceInput.app/
 
 # macOS
 .DS_Store
