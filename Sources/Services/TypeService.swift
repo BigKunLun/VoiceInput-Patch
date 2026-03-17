@@ -10,18 +10,35 @@ class TypeService {
     /// 每个字符间的延迟（微秒）
     private static let charDelayUs: UInt32 = 800
 
-    /// 键入文本（换行替换为空格）
-    static func type(_ text: String) {
-        guard let src = CGEventSource(stateID: .hidSystemState) else {
-            return
-        }
+    /// 单次键入最大字符数
+    static let maxLength = 10000
 
-        // 换行替换为空格，避免触发提交
-        let processedText = text.replacingOccurrences(of: "\n", with: " ")
+    /// 用于键入操作的串行队列
+    private static let typeQueue = DispatchQueue(label: "com.bigkunlun.voiceinput.type", qos: .userInteractive)
 
-        for char in processedText {
-            typeChar(char, source: src)
-            usleep(charDelayUs)
+    /// 异步键入文本，完成后在主线程回调
+    /// 换行替换为空格，超长文本截断至 maxLength
+    static func type(_ text: String, completion: @escaping () -> Void) {
+        typeQueue.async {
+            guard let src = CGEventSource(stateID: .hidSystemState) else {
+                DispatchQueue.main.async { completion() }
+                return
+            }
+
+            // 换行替换为空格，避免触发提交
+            var processedText = text.replacingOccurrences(of: "\n", with: " ")
+
+            // 超长文本截断保护
+            if processedText.count > maxLength {
+                processedText = String(processedText.prefix(maxLength))
+            }
+
+            for char in processedText {
+                typeChar(char, source: src)
+                usleep(charDelayUs)
+            }
+
+            DispatchQueue.main.async { completion() }
         }
     }
 
@@ -34,15 +51,12 @@ class TypeService {
             return
         }
 
-        // 直接设置 Unicode 字符串，绕过输入法
         keyDown.keyboardSetUnicodeString(stringLength: utf16.count, unicodeString: utf16)
         keyUp.keyboardSetUnicodeString(stringLength: utf16.count, unicodeString: utf16)
 
-        // 清除修饰键，防止 Cmd 状态泄露
         keyDown.flags = []
         keyUp.flags = []
 
-        // post 到下游，绕过 CGEvent Tap 干扰
         keyDown.post(tap: .cgAnnotatedSessionEventTap)
         keyUp.post(tap: .cgAnnotatedSessionEventTap)
     }

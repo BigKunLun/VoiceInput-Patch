@@ -18,16 +18,17 @@ class InterceptService {
     private var runLoopSource: CFRunLoopSource?
     private var whitelist: Set<String>
     private var bundleIdWhitelist: Set<String>
-    private var onIntercept: (String) -> Void
+    private var onIntercept: (String, @escaping () -> Void) -> Void
     private var isPaused = false
 
-    init(whitelist: Set<String>, bundleIdWhitelist: Set<String>, onIntercept: @escaping (String) -> Void) {
+    init(whitelist: Set<String>, bundleIdWhitelist: Set<String>, onIntercept: @escaping (String, @escaping () -> Void) -> Void) {
         self.whitelist = whitelist
         self.bundleIdWhitelist = bundleIdWhitelist
         self.onIntercept = onIntercept
     }
 
     func start() {
+        assert(Thread.isMainThread, "InterceptService.start() 必须在主线程调用")
         let eventMask: CGEventMask = (1 << CGEventType.keyDown.rawValue)
 
         guard let createdTap = CGEvent.tapCreate(
@@ -53,6 +54,7 @@ class InterceptService {
     }
 
     func stop() {
+        assert(Thread.isMainThread, "InterceptService.stop() 必须在主线程调用")
         guard let tap = tap, let source = runLoopSource else { return }
         CGEvent.tapEnable(tap: tap, enable: false)
         CFRunLoopRemoveSource(CFRunLoopGetCurrent(), source, .commonModes)
@@ -122,11 +124,8 @@ class InterceptService {
         // 暂停 tap，避免干扰后续键入
         pause()
 
-        // 通知主线程（在主线程中会调用 TypeService）
-        onIntercept(content)
-
-        // 等待键入完成后恢复 tap
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
+        // 传递 completion，由调用方在键入完成后调用以恢复 tap
+        onIntercept(content) { [weak self] in
             self?.resume()
         }
 

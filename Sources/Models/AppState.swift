@@ -25,10 +25,13 @@ class AppState: ObservableObject {
         interceptService = InterceptService(
             whitelist: settings.enabledTerminalsLowercased,
             bundleIdWhitelist: settings.enabledBundleIds,
-            onIntercept: { [weak self] text in
+            onIntercept: { [weak self] text, completion in
                 DispatchQueue.main.async {
-                    self?.handleIntercept(text)
+                    self?.interceptCount += 1
+                    let truncated = text.count > TypeService.maxLength
+                    self?.lastPreview = String(text.prefix(60)) + (truncated ? " [已截断]" : "")
                 }
+                TypeService.type(text, completion: completion)
             }
         )
 
@@ -42,9 +45,4 @@ class AppState: ObservableObject {
         isRunning = false
     }
 
-    private func handleIntercept(_ text: String) {
-        interceptCount += 1
-        lastPreview = String(text.prefix(60))
-        TypeService.type(text)
-    }
 }
