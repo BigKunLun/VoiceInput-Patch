@@ -12,7 +12,7 @@ struct VoiceInputApp: App {
     @StateObject private var state = AppState.shared
 
     var body: some Scene {
-        MenuBarExtra("", systemImage: state.isRunning ? "text.bubble.fill" : "text.bubble") {
+        MenuBarExtra("", systemImage: state.isRunning ? "waveform.circle.fill" : "waveform") {
             MenuBarView()
         }
         .menuBarExtraStyle(.window)

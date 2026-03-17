@@ -14,7 +14,7 @@ struct MenuBarView: View {
             // 开关按钮
             Button(action: toggleRunning) {
                 HStack {
-                    Image(systemName: state.isRunning ? "text.bubble.fill" : "text.bubble")
+                    Image(systemName: state.isRunning ? "waveform.circle.fill" : "waveform")
                         .foregroundColor(state.isRunning ? .green : .secondary)
                     Text(state.isRunning ? "已启动" : "已停止")
                     Spacer()
