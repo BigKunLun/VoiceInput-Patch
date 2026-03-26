@@ -115,7 +115,7 @@ class InterceptService {
         let bundleId = (app.bundleIdentifier ?? "").lowercased()
 
         guard whitelist.contains(appName) || bundleIdWhitelist.contains(bundleId) else {
-            log("⚠️ 白名单不匹配: \(appName) / \(bundleId)")
+            logger.debug("白名单不匹配: \(appName, privacy: .public) / \(bundleId, privacy: .public)")
             return Unmanaged.passUnretained(event)
         }
 

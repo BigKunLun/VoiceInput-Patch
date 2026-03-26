@@ -25,8 +25,11 @@ class TypeService {
                 return
             }
 
-            // 换行替换为空格，避免触发提交
-            var processedText = text.replacingOccurrences(of: "\n", with: " ")
+            // 换行替换为空格，避免触发提交（\r\n、\r、\n 统一处理）
+            var processedText = text
+                .replacingOccurrences(of: "\r\n", with: " ")
+                .replacingOccurrences(of: "\r", with: " ")
+                .replacingOccurrences(of: "\n", with: " ")
 
             // 超长文本截断保护
             if processedText.count > maxLength {
