@@ -77,6 +77,11 @@ System Settings → Privacy & Security → Accessibility → Add and enable Voic
 3. Click the start button to begin interception
 4. Use voice input normally in the specified terminals — paste in non-whitelisted apps is unaffected
 
+### Notes
+
+- Newlines in clipboard content are replaced with spaces to prevent premature command submission in terminal apps like Claude Code.
+- Text longer than 10,000 characters is truncated for safety.
+
 ### Requirements
 
 - macOS 13.0+ (Apple Silicon / Intel)
@@ -165,6 +170,11 @@ xattr -cr VoiceInput.app
 2. 点击图标打开菜单，勾选需要监听的终端
 3. 点击启动按钮开始拦截
 4. 在指定终端中正常使用语音输入即可，非白名单应用中的粘贴不受影响
+
+### 注意事项
+
+- 剪贴板中的换行符会被替换为空格，以避免在 Claude Code 等终端中触发提前提交。
+- 超过 10,000 字符的文本会被截断保护。
 
 ### 环境要求
 

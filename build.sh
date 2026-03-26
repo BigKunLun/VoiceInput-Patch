@@ -12,11 +12,16 @@ APP_DIR="./${APP_NAME}.app"
 CONTENTS_DIR="${APP_DIR}/Contents"
 MACOS_DIR="${CONTENTS_DIR}/MacOS"
 
+RESOURCES_DIR="${CONTENTS_DIR}/Resources"
+
 rm -rf "${APP_DIR}"
-mkdir -p "${MACOS_DIR}"
+mkdir -p "${MACOS_DIR}" "${RESOURCES_DIR}"
 
 # 复制可执行文件
 cp .build/release/VoiceInput "${MACOS_DIR}/${APP_NAME}"
+
+# 复制应用图标
+cp Assets/AppIcon.icns "${RESOURCES_DIR}/AppIcon.icns"
 
 # 创建 Info.plist
 cat > "${CONTENTS_DIR}/Info.plist" << 'EOF'
@@ -33,13 +38,15 @@ cat > "${CONTENTS_DIR}/Info.plist" << 'EOF'
     <key>CFBundleDisplayName</key>
     <string>VoiceInput</string>
     <key>CFBundleVersion</key>
-    <string>1.1.0</string>
+    <string>1.2.0</string>
     <key>CFBundleShortVersionString</key>
-    <string>1.1.0</string>
+    <string>1.2.0</string>
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>LSMinimumSystemVersion</key>
     <string>13.0</string>
+    <key>CFBundleIconFile</key>
+    <string>AppIcon</string>
     <key>LSUIElement</key>
     <true/>
     <key>NSHumanReadableCopyright</key>

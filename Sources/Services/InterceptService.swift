@@ -28,7 +28,9 @@ class InterceptService {
         self.onIntercept = onIntercept
     }
 
-    func start() {
+    /// 启动事件拦截，返回是否成功
+    @discardableResult
+    func start() -> Bool {
         assert(Thread.isMainThread, "InterceptService.start() 必须在主线程调用")
         let eventMask: CGEventMask = (1 << CGEventType.keyDown.rawValue)
 
@@ -44,7 +46,7 @@ class InterceptService {
             userInfo: Unmanaged.passUnretained(self).toOpaque()
         ) else {
             log("❌ 无法创建 CGEvent Tap，请检查辅助功能权限")
-            return
+            return false
         }
 
         tap = createdTap
@@ -52,6 +54,7 @@ class InterceptService {
         CFRunLoopAddSource(CFRunLoopGetCurrent(), runLoopSource, .commonModes)
         CGEvent.tapEnable(tap: createdTap, enable: true)
         log("✅ InterceptService 已启动，白名单: \(whitelist)，bundleId: \(bundleIdWhitelist)")
+        return true
     }
 
     func stop() {
@@ -65,6 +68,7 @@ class InterceptService {
     }
 
     func pause() {
+        assert(Thread.isMainThread, "InterceptService.pause() 必须在主线程调用")
         isPaused = true
         if let tap = tap {
             CGEvent.tapEnable(tap: tap, enable: false)
@@ -72,6 +76,7 @@ class InterceptService {
     }
 
     func resume() {
+        assert(Thread.isMainThread, "InterceptService.resume() 必须在主线程调用")
         if let tap = tap {
             CGEvent.tapEnable(tap: tap, enable: true)
         }

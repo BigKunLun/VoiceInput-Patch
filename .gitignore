@@ -6,3 +6,10 @@ VoiceInput.app/
 
 # macOS
 .DS_Store
+
+# 日志文件
+*.log
+
+# 旧架构遗留二进制（已废弃）
+intercept_paste
+type_unicode
