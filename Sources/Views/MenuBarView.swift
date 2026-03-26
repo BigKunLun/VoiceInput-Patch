@@ -83,17 +83,23 @@ struct MenuBarView: View {
 
             Divider()
 
-            // 退出按钮
-            Button(action: {
-                NSApplication.shared.terminate(nil)
-            }) {
-                HStack {
-                    Image(systemName: "power")
-                    Text("退出")
+            // 版本号 + 退出
+            HStack {
+                Text("v\(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "?")")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                Spacer()
+                Button(action: {
+                    NSApplication.shared.terminate(nil)
+                }) {
+                    HStack {
+                        Image(systemName: "power")
+                        Text("退出")
+                    }
+                    .foregroundColor(.red)
                 }
-                .foregroundColor(.red)
+                .buttonStyle(.plain)
             }
-            .buttonStyle(.plain)
         }
         .padding(12)
         .frame(width: 260)
