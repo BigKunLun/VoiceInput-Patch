@@ -19,7 +19,7 @@ Voice Input Tool -> Clipboard + Cmd+V
                                   |
 InterceptService   ->  CGEvent Tap intercepts Cmd+V -> swallow -> read clipboard
                                   |
-TypeService        ->  CGEvent keyboardSetUnicodeString (char-by-char typing)
+TypeService        ->  CGEvent keyboardSetUnicodeString (chunked typing, up to 20 UTF-16 units per event)
                        -> post to .cgAnnotatedSessionEventTap (bypass tap interference)
                                   |
 Terminal / Claude Code ->  Receives keyboard input (not paste) -> no bracket paste mode
@@ -105,7 +105,7 @@ macOS 菜单栏应用，通过 CGEvent Tap 拦截指定终端中的 Cmd+V，吞�
                               |
 InterceptService          ->  CGEvent Tap 拦截 Cmd+V -> 吞掉 -> 读取剪贴板
                               |
-TypeService               ->  CGEvent keyboardSetUnicodeString 逐字键入
+TypeService               ->  CGEvent keyboardSetUnicodeString 分块键入（每事件最多 20 UTF-16 码元）
                               -> post 到 .cgAnnotatedSessionEventTap（绕过 tap 干扰）
                               |
 终端 / Claude Code         ->  收到逐字键盘输入（非粘贴）-> 不触发折叠
@@ -196,7 +196,7 @@ VoiceInput-Patch/
 │   │   └── Settings.swift           # 终端白名单、UserDefaults 持久化
 │   ├── Services/
 │   │   ├── InterceptService.swift   # CGEvent Tap 拦截 Cmd+V
-│   │   └── TypeService.swift        # CGEvent Unicode 逐字键入
+│   │   └── TypeService.swift        # CGEvent Unicode 分块键入
 │   └── Views/
 │       └── MenuBarView.swift        # 菜单栏下拉菜单
 ├── build.sh                         # 构建脚本（swift build + 打包 .app）
