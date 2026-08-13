@@ -18,11 +18,16 @@ class InterceptService {
     private var runLoopSource: CFRunLoopSource?
     private var whitelist: Set<String>
     private var bundleIdWhitelist: Set<String>
-    private var onIntercept: (String, @escaping () -> Void) -> Void
+    /// 参数：剪贴板文本、目标终端 pid、键入完成后用于恢复拦截的回调
+    private var onIntercept: (String, pid_t, @escaping () -> Void) -> Void
     /// 所有对 isPaused 的读写都在主线程 RunLoop 中进行（event tap 回调 + DispatchQueue.main）
     private var isPaused = false
 
-    init(whitelist: Set<String>, bundleIdWhitelist: Set<String>, onIntercept: @escaping (String, @escaping () -> Void) -> Void) {
+    /// 兜底定时器：completion 因任何意外没被调用时，防止拦截永久停摆
+    private var watchdog: Timer?
+    private static let watchdogTimeout: TimeInterval = 15
+
+    init(whitelist: Set<String>, bundleIdWhitelist: Set<String>, onIntercept: @escaping (String, pid_t, @escaping () -> Void) -> Void) {
         self.whitelist = whitelist
         self.bundleIdWhitelist = bundleIdWhitelist
         self.onIntercept = onIntercept
@@ -59,6 +64,7 @@ class InterceptService {
 
     func stop() {
         assert(Thread.isMainThread, "InterceptService.stop() 必须在主线程调用")
+        cancelWatchdog()
         guard let tap = tap, let source = runLoopSource else { return }
         CGEvent.tapEnable(tap: tap, enable: false)
         CFRunLoopRemoveSource(CFRunLoopGetCurrent(), source, .commonModes)
@@ -73,14 +79,37 @@ class InterceptService {
         if let tap = tap {
             CGEvent.tapEnable(tap: tap, enable: false)
         }
+        startWatchdog()
     }
 
     func resume() {
         assert(Thread.isMainThread, "InterceptService.resume() 必须在主线程调用")
+        cancelWatchdog()
         if let tap = tap {
             CGEvent.tapEnable(tap: tap, enable: true)
         }
         isPaused = false
+    }
+
+    // MARK: - Watchdog
+
+    /// 键入完成后 resume() 会取消它；一旦超时仍未取消，说明 completion 丢了，强制恢复拦截。
+    /// 没有它的话拦截会永久停摆，而菜单栏仍显示「已启动」，用户无从察觉。
+    private func startWatchdog() {
+        cancelWatchdog()
+        let timer = Timer(timeInterval: Self.watchdogTimeout, repeats: false) { [weak self] _ in
+            guard let self = self, self.isPaused else { return }
+            log("⚠️ 键入回调超时未返回，强制恢复拦截")
+            self.resume()
+        }
+        // .common 模式：菜单栏面板打开时 RunLoop 切到 tracking mode，default 模式的定时器会被挂起
+        RunLoop.main.add(timer, forMode: .common)
+        watchdog = timer
+    }
+
+    private func cancelWatchdog() {
+        watchdog?.invalidate()
+        watchdog = nil
     }
 
     private func handleEvent(proxy: CGEventTapProxy, type: CGEventType, event: CGEvent) -> Unmanaged<CGEvent>? {
@@ -130,8 +159,8 @@ class InterceptService {
         // 暂停 tap，避免干扰后续键入
         pause()
 
-        // 传递 completion，由调用方在键入完成后调用以恢复 tap
-        onIntercept(content) { [weak self] in
+        // 传递目标 pid 与 completion，由调用方在键入完成后调用以恢复 tap
+        onIntercept(content, app.processIdentifier) { [weak self] in
             self?.resume()
         }
 

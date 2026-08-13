@@ -82,7 +82,8 @@ System Settings → Privacy & Security → Accessibility → Add and enable Voic
 ### Notes
 
 - **Newlines**: pick a *Newline mode* in the menu bar. Default is **Ctrl+J**, which sends LF instead of Enter's CR — most TUIs treat it as a line break rather than a submit. If your terminal submits anyway, switch to another mode without restarting: `\` + Enter (shell continuation), Option+Enter (needs `option-as-alt`), Shift+Enter (needs a terminal keybind, e.g. Claude Code's `/terminal-setup`), or *Space* which is always safe but flattens multi-line text.
-- **Clipboard write-back**: the sanitized single-line version of the text is written back to the clipboard, so a manual Cmd+Shift+V is always paste-safe.
+- **Clipboard write-back**: in *Space* mode only, the sanitized single-line text is written back to the clipboard so a manual Cmd+Shift+V stays paste-safe. Other modes leave the clipboard untouched — they type the original line breaks, and overwriting the clipboard would destroy that structure for good.
+- **Typing is aborted if you switch apps** mid-way, so the remaining text never lands in the wrong window.
 - **Escape hatch**: Cmd+Shift+V is never intercepted — use it when you want the terminal's native paste.
 - **Launch at login** uses `SMAppService`; the app must live in `/Applications`.
 - Text longer than 10,000 characters is truncated for safety.
@@ -191,7 +192,8 @@ xattr -cr VoiceInput.app
 ### 注意事项
 
 - **换行处理**：菜单栏可选「换行方式」，默认 **Ctrl+J**——发送 LF 而非 Enter 的 CR，多数 TUI 视为换行而非提交。若你的终端仍然把它当提交，无需重启直接换一个：反斜杠 + Enter（shell 续行写法）、Option+Enter（需终端开启 option-as-alt）、Shift+Enter（需终端配过 keybind，如 Claude Code 的 `/terminal-setup`），或「转为空格」——永远安全，代价是丢多行结构。
-- **剪贴板写回**：处理后的单行安全版本会写回剪贴板，手动 Cmd+Shift+V 粘贴也不会卡住终端。
+- **剪贴板写回**：仅「转为空格」模式下，处理后的单行安全版本会写回剪贴板，手动 Cmd+Shift+V 粘贴也不会卡住终端。其余模式不动剪贴板——它们键入的是带换行的原文，写回单行版会把原文的换行结构永久覆盖掉。
+- **键入途中切换应用会自动中止**，剩余文本不会打进别的窗口。
 - **逃生阀**：Cmd+Shift+V 永远不被拦截，需要终端原生粘贴时用它。
 - **开机自启**基于 `SMAppService`，要求应用位于「应用程序」文件夹。
 - 超过 10,000 字符的文本会被截断保护。

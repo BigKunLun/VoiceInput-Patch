@@ -178,7 +178,22 @@ struct MenuBarView: View {
                 .pickerStyle(.menu)
                 .frame(width: 140)
             }
-            .help("终端把某种方式当成提交（内容被发出去）时，换下一个试试。「转为空格」永远安全。写回剪贴板的始终是单行安全版本。")
+            .help("终端把某种方式当成提交（内容被发出去）时，换下一个试试。「转为空格」永远安全。")
+
+            Button(action: { state.runNewlineTest() }) {
+                HStack(spacing: 4) {
+                    Image(systemName: state.testCountdown > 0 ? "timer" : "text.insert")
+                        .font(.caption)
+                    Text(state.testCountdown > 0
+                         ? "\(state.testCountdown) 秒后键入，切到终端窗口"
+                         : "测试换行方式")
+                        .font(.subheadline)
+                }
+                .foregroundColor(state.testCountdown > 0 ? .orange : .accentColor)
+            }
+            .buttonStyle(.plain)
+            .disabled(state.testCountdown > 0)
+            .help("倒计时结束后，用当前换行方式往前台窗口键入「第一行 / 第二行」，一眼看出是换行还是提交")
 
             Toggle("开机自启", isOn: Binding(
                 get: { state.launchAtLogin },

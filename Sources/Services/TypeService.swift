@@ -5,6 +5,7 @@
 
 import Foundation
 import CoreGraphics
+import AppKit
 
 class TypeService {
     /// 每个分块间的延迟（微秒）
@@ -15,6 +16,9 @@ class TypeService {
 
     /// 单次键入最大字符数
     static let maxLength = 10000
+
+    /// 每键入多少个分块校验一次前台应用（约 200 字符一次，开销可忽略）
+    private static let pidCheckIntervalChunks = 10
 
     /// Return 键的 virtualKey
     private static let returnKeyCode: CGKeyCode = 36
@@ -40,42 +44,69 @@ class TypeService {
     }
 
     /// 异步键入文本，完成后在主线程回调
-    /// - Parameter newlineMode: 换行的键入方式，见 NewlineMode
-    static func type(_ text: String, newlineMode: NewlineMode, completion: @escaping () -> Void) {
+    /// - Parameters:
+    ///   - newlineMode: 换行的键入方式，见 NewlineMode
+    ///   - targetPID: 目标终端进程；键入途中前台应用变了就中止，避免把剩余文本打进别的窗口。
+    ///     传 nil 表示不校验
+    ///   - completion: 参数为 true 表示因前台应用切换而中止
+    static func type(
+        _ text: String,
+        newlineMode: NewlineMode,
+        targetPID: pid_t?,
+        completion: @escaping (Bool) -> Void
+    ) {
         typeQueue.async {
             guard let src = CGEventSource(stateID: .hidSystemState) else {
-                DispatchQueue.main.async { completion() }
+                DispatchQueue.main.async { completion(false) }
                 return
             }
 
             let processed = normalized(text)
+            var aborted = false
 
             if newlineMode == .space {
                 // 无需切段，整体替换后一次性分块键入，事件数最少
-                typeSegment(processed.replacingOccurrences(of: "\n", with: " "), source: src)
+                let flattened = processed.replacingOccurrences(of: "\n", with: " ")
+                aborted = !typeSegment(flattened, source: src, targetPID: targetPID)
             } else {
                 // 按换行切段，段与段之间发送对应的软换行按键
                 let segments = processed.components(separatedBy: "\n")
                 for (index, segment) in segments.enumerated() {
+                    guard isTargetFrontmost(targetPID) else {
+                        aborted = true
+                        break
+                    }
                     if index > 0 {
                         postNewline(mode: newlineMode, source: src)
                         usleep(chunkDelayUs)
                     }
-                    typeSegment(segment, source: src)
+                    if !typeSegment(segment, source: src, targetPID: targetPID) {
+                        aborted = true
+                        break
+                    }
                 }
             }
 
-            DispatchQueue.main.async { completion() }
+            DispatchQueue.main.async { completion(aborted) }
         }
+    }
+
+    /// 前台应用是否仍是拦截时的那个终端。
+    /// NSWorkspace.frontmostApplication 读的是共享状态，可从后台线程访问
+    private static func isTargetFrontmost(_ targetPID: pid_t?) -> Bool {
+        guard let targetPID = targetPID else { return true }
+        return NSWorkspace.shared.frontmostApplication?.processIdentifier == targetPID
     }
 
     /// 分块键入一段无换行文本：每个 CGEvent 最多携带 maxChunkUTF16 个 UTF-16 码元，
     /// 避免逐字符产生海量事件淹没终端
-    private static func typeSegment(_ segment: String, source: CGEventSource) {
-        guard !segment.isEmpty else { return }
+    /// - Returns: false 表示途中前台应用切换、已中止
+    private static func typeSegment(_ segment: String, source: CGEventSource, targetPID: pid_t?) -> Bool {
+        guard !segment.isEmpty else { return true }
 
         var chunk: [UniChar] = []
         chunk.reserveCapacity(maxChunkUTF16)
+        var chunksSinceCheck = 0
 
         for char in segment {
             let utf16 = Array(String(char).utf16)
@@ -83,6 +114,12 @@ class TypeService {
                 typeChunk(chunk, source: source)
                 usleep(chunkDelayUs)
                 chunk.removeAll(keepingCapacity: true)
+
+                chunksSinceCheck += 1
+                if chunksSinceCheck >= pidCheckIntervalChunks {
+                    chunksSinceCheck = 0
+                    guard isTargetFrontmost(targetPID) else { return false }
+                }
             }
             chunk.append(contentsOf: utf16)
         }
@@ -90,6 +127,7 @@ class TypeService {
         if !chunk.isEmpty {
             typeChunk(chunk, source: source)
         }
+        return true
     }
 
     /// 按所选方式发送一次换行

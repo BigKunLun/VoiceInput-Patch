@@ -38,9 +38,9 @@ cat > "${CONTENTS_DIR}/Info.plist" << 'EOF'
     <key>CFBundleDisplayName</key>
     <string>VoiceInput</string>
     <key>CFBundleVersion</key>
-    <string>1.3.1</string>
+    <string>1.4.0</string>
     <key>CFBundleShortVersionString</key>
-    <string>1.3.1</string>
+    <string>1.4.0</string>
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>LSMinimumSystemVersion</key>
