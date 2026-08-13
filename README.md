@@ -81,7 +81,7 @@ System Settings → Privacy & Security → Accessibility → Add and enable Voic
 
 ### Notes
 
-- **Newlines**: with *Preserve line breaks* on (default), line breaks are typed as Option+Enter — a soft newline in Claude Code and most TUIs, so multi-line structure survives without submitting the command. Turn it off if your terminal submits on Option+Enter; newlines then become spaces.
+- **Newlines**: pick a *Newline mode* in the menu bar. Default is **Ctrl+J**, which sends LF instead of Enter's CR — most TUIs treat it as a line break rather than a submit. If your terminal submits anyway, switch to another mode without restarting: `\` + Enter (shell continuation), Option+Enter (needs `option-as-alt`), Shift+Enter (needs a terminal keybind, e.g. Claude Code's `/terminal-setup`), or *Space* which is always safe but flattens multi-line text.
 - **Clipboard write-back**: the sanitized single-line version of the text is written back to the clipboard, so a manual Cmd+Shift+V is always paste-safe.
 - **Escape hatch**: Cmd+Shift+V is never intercepted — use it when you want the terminal's native paste.
 - **Launch at login** uses `SMAppService`; the app must live in `/Applications`.
@@ -190,7 +190,7 @@ xattr -cr VoiceInput.app
 
 ### 注意事项
 
-- **换行处理**：默认开启「保留换行结构」，换行以 Option+Enter 键入——在 Claude Code 及多数 TUI 中是软换行，既保住多行结构又不会触发提交。若你的终端把 Option+Enter 当提交，关掉该选项即可回退为「换行转空格」。
+- **换行处理**：菜单栏可选「换行方式」，默认 **Ctrl+J**——发送 LF 而非 Enter 的 CR，多数 TUI 视为换行而非提交。若你的终端仍然把它当提交，无需重启直接换一个：反斜杠 + Enter（shell 续行写法）、Option+Enter（需终端开启 option-as-alt）、Shift+Enter（需终端配过 keybind，如 Claude Code 的 `/terminal-setup`），或「转为空格」——永远安全，代价是丢多行结构。
 - **剪贴板写回**：处理后的单行安全版本会写回剪贴板，手动 Cmd+Shift+V 粘贴也不会卡住终端。
 - **逃生阀**：Cmd+Shift+V 永远不被拦截，需要终端原生粘贴时用它。
 - **开机自启**基于 `SMAppService`，要求应用位于「应用程序」文件夹。

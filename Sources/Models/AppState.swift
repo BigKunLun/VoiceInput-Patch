@@ -42,14 +42,14 @@ class AppState: ObservableObject {
                     completion()
                     return
                 }
-                let preserveNewlines = self.settings.preserveNewlines
+                let newlineMode = self.settings.newlineMode
                 DispatchQueue.main.async {
                     self.interceptCount += 1
                     let truncated = text.count > TypeService.maxLength
                     self.lastPreview = String(text.prefix(60)) + (truncated ? " [已截断]" : "")
                     self.writeBackSanitizedClipboard(text)
                 }
-                TypeService.type(text, preserveNewlines: preserveNewlines, completion: completion)
+                TypeService.type(text, newlineMode: newlineMode, completion: completion)
             }
         )
 

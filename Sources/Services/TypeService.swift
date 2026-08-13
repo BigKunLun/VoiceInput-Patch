@@ -19,6 +19,9 @@ class TypeService {
     /// Return 键的 virtualKey
     private static let returnKeyCode: CGKeyCode = 36
 
+    /// J 键的 virtualKey，配合 Control 发送 LF
+    private static let jKeyCode: CGKeyCode = 38
+
     /// 用于键入操作的串行队列
     private static let typeQueue = DispatchQueue(label: "com.bigkunlun.voiceinput.type", qos: .userInteractive)
 
@@ -37,9 +40,8 @@ class TypeService {
     }
 
     /// 异步键入文本，完成后在主线程回调
-    /// - Parameter preserveNewlines: true 时用 Option+Enter 键入软换行保住多行结构，
-    ///   false 时换行统一替换为空格
-    static func type(_ text: String, preserveNewlines: Bool, completion: @escaping () -> Void) {
+    /// - Parameter newlineMode: 换行的键入方式，见 NewlineMode
+    static func type(_ text: String, newlineMode: NewlineMode, completion: @escaping () -> Void) {
         typeQueue.async {
             guard let src = CGEventSource(stateID: .hidSystemState) else {
                 DispatchQueue.main.async { completion() }
@@ -48,18 +50,19 @@ class TypeService {
 
             let processed = normalized(text)
 
-            if preserveNewlines {
-                // 按换行切段，段与段之间发送软换行键
+            if newlineMode == .space {
+                // 无需切段，整体替换后一次性分块键入，事件数最少
+                typeSegment(processed.replacingOccurrences(of: "\n", with: " "), source: src)
+            } else {
+                // 按换行切段，段与段之间发送对应的软换行按键
                 let segments = processed.components(separatedBy: "\n")
                 for (index, segment) in segments.enumerated() {
                     if index > 0 {
-                        postSoftReturn(source: src)
+                        postNewline(mode: newlineMode, source: src)
                         usleep(chunkDelayUs)
                     }
                     typeSegment(segment, source: src)
                 }
-            } else {
-                typeSegment(processed.replacingOccurrences(of: "\n", with: " "), source: src)
             }
 
             DispatchQueue.main.async { completion() }
@@ -89,15 +92,32 @@ class TypeService {
         }
     }
 
-    /// 发送 Option+Enter：macOS 终端下 Claude Code 等 TUI 将其识别为软换行而非提交
-    private static func postSoftReturn(source: CGEventSource) {
-        guard let keyDown = CGEvent(keyboardEventSource: source, virtualKey: returnKeyCode, keyDown: true),
-              let keyUp = CGEvent(keyboardEventSource: source, virtualKey: returnKeyCode, keyDown: false) else {
+    /// 按所选方式发送一次换行
+    private static func postNewline(mode: NewlineMode, source: CGEventSource) {
+        switch mode {
+        case .space:
+            typeChunk(Array(" ".utf16), source: source)
+        case .controlJ:
+            postKey(jKeyCode, flags: .maskControl, source: source)
+        case .backslashEnter:
+            typeChunk(Array("\\".utf16), source: source)
+            usleep(chunkDelayUs)
+            postKey(returnKeyCode, flags: [], source: source)
+        case .optionEnter:
+            postKey(returnKeyCode, flags: .maskAlternate, source: source)
+        case .shiftEnter:
+            postKey(returnKeyCode, flags: .maskShift, source: source)
+        }
+    }
+
+    private static func postKey(_ keyCode: CGKeyCode, flags: CGEventFlags, source: CGEventSource) {
+        guard let keyDown = CGEvent(keyboardEventSource: source, virtualKey: keyCode, keyDown: true),
+              let keyUp = CGEvent(keyboardEventSource: source, virtualKey: keyCode, keyDown: false) else {
             return
         }
 
-        keyDown.flags = .maskAlternate
-        keyUp.flags = .maskAlternate
+        keyDown.flags = flags
+        keyUp.flags = flags
 
         keyDown.post(tap: .cgAnnotatedSessionEventTap)
         keyUp.post(tap: .cgAnnotatedSessionEventTap)

@@ -8,6 +8,9 @@ import UniformTypeIdentifiers
 
 struct MenuBarView: View {
     @ObservedObject var state = AppState.shared
+    /// 必须单独观察：Settings 是独立的 ObservableObject，
+    /// 它的变化不会触发 AppState 的 objectWillChange，只观察 state 会导致勾选后界面不刷新
+    @ObservedObject var settings = Settings.shared
     @State private var showTerminals = true
 
     var body: some View {
@@ -96,12 +99,12 @@ struct MenuBarView: View {
                 VStack(alignment: .leading, spacing: 2) {
                     ForEach(PRESET_TERMINALS, id: \.self) { terminal in
                         Toggle(terminal, isOn: Binding(
-                            get: { state.settings.enabledTerminals.contains(terminal) },
+                            get: { settings.enabledTerminals.contains(terminal) },
                             set: { isChecked in
                                 if isChecked {
-                                    state.settings.enabledTerminals.insert(terminal)
+                                    settings.enabledTerminals.insert(terminal)
                                 } else {
-                                    state.settings.enabledTerminals.remove(terminal)
+                                    settings.enabledTerminals.remove(terminal)
                                 }
                                 applyChange()
                             }
@@ -110,12 +113,12 @@ struct MenuBarView: View {
                         .font(.subheadline)
                     }
 
-                    ForEach(state.settings.customTerminals) { terminal in
+                    ForEach(settings.customTerminals) { terminal in
                         HStack(spacing: 4) {
                             Toggle(terminal.name, isOn: Binding(
                                 get: { terminal.isEnabled },
                                 set: { isChecked in
-                                    state.settings.setCustomTerminal(bundleId: terminal.bundleId, enabled: isChecked)
+                                    settings.setCustomTerminal(bundleId: terminal.bundleId, enabled: isChecked)
                                     applyChange()
                                 }
                             ))
@@ -126,7 +129,7 @@ struct MenuBarView: View {
                             Spacer()
 
                             Button(action: {
-                                state.settings.removeCustomTerminal(bundleId: terminal.bundleId)
+                                settings.removeCustomTerminal(bundleId: terminal.bundleId)
                                 applyChange()
                             }) {
                                 Image(systemName: "minus.circle")
@@ -159,13 +162,23 @@ struct MenuBarView: View {
 
     private var optionSection: some View {
         VStack(alignment: .leading, spacing: 4) {
-            Toggle("保留换行结构", isOn: Binding(
-                get: { state.settings.preserveNewlines },
-                set: { state.settings.preserveNewlines = $0 }
-            ))
-            .toggleStyle(.checkbox)
-            .font(.subheadline)
-            .help("开启：换行用 Option+Enter 键入，保住多行结构；关闭：换行统一转空格。写回剪贴板的始终是单行安全版本。")
+            HStack {
+                Text("换行方式")
+                    .font(.subheadline)
+                Spacer()
+                Picker("", selection: Binding(
+                    get: { settings.newlineMode },
+                    set: { settings.newlineMode = $0 }
+                )) {
+                    ForEach(NewlineMode.allCases) { mode in
+                        Text(mode.displayName).tag(mode)
+                    }
+                }
+                .labelsHidden()
+                .pickerStyle(.menu)
+                .frame(width: 140)
+            }
+            .help("终端把某种方式当成提交（内容被发出去）时，换下一个试试。「转为空格」永远安全。写回剪贴板的始终是单行安全版本。")
 
             Toggle("开机自启", isOn: Binding(
                 get: { state.launchAtLogin },
@@ -180,12 +193,12 @@ struct MenuBarView: View {
     // MARK: - 动作
 
     private var enabledCount: Int {
-        state.settings.enabledTerminals.count
-            + state.settings.customTerminals.filter { $0.isEnabled }.count
+        settings.enabledTerminals.count
+            + settings.customTerminals.filter { $0.isEnabled }.count
     }
 
     private var totalCount: Int {
-        PRESET_TERMINALS.count + state.settings.customTerminals.count
+        PRESET_TERMINALS.count + settings.customTerminals.count
     }
 
     private func toggleRunning() {
@@ -226,7 +239,7 @@ struct MenuBarView: View {
         }
 
         let name = url.deletingPathExtension().lastPathComponent
-        state.settings.addCustomTerminal(name: name, bundleId: bundleId)
+        settings.addCustomTerminal(name: name, bundleId: bundleId)
         applyChange()
     }
 }

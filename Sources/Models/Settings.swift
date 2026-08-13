@@ -25,6 +25,33 @@ let TERMINAL_BUNDLE_IDS: [String: String] = [
     "warp": "dev.warp.warp-stable",
 ]
 
+/// 换行的键入方式。不同终端 / TUI 对「软换行」的约定不一致，
+/// 做成可切换项，终端表现不对时用户自己换一个即可，无需改代码
+enum NewlineMode: String, CaseIterable, Codable, Identifiable {
+    /// 换行统一替换为空格（最保守，绝不会误提交）
+    case space
+    /// Ctrl+J：发送 LF (0x0A) 而非 Enter 的 CR (0x0D)，多数 TUI 视为换行
+    case controlJ
+    /// 反斜杠 + Enter：shell 续行写法，Claude Code / bash / zsh 通用
+    case backslashEnter
+    /// Option+Enter：需终端开启 option-as-alt，否则退化成普通 Enter 触发提交
+    case optionEnter
+    /// Shift+Enter：需终端配置过对应 keybind（如 Claude Code 的 /terminal-setup）
+    case shiftEnter
+
+    var id: String { rawValue }
+
+    var displayName: String {
+        switch self {
+        case .space: return "转为空格"
+        case .controlJ: return "Ctrl+J"
+        case .backslashEnter: return "反斜杠 + Enter"
+        case .optionEnter: return "Option+Enter"
+        case .shiftEnter: return "Shift+Enter"
+        }
+    }
+}
+
 /// 用户手动添加的终端，bundleId 从 .app 包内读取，不依赖预设表
 struct CustomTerminal: Codable, Hashable, Identifiable {
     var id: String { bundleId }
@@ -39,6 +66,7 @@ class Settings: ObservableObject {
     private let enabledTerminalsKey = "voiceInput.enabledTerminals"
     private let customTerminalsKey = "voiceInput.customTerminals"
     private let preserveNewlinesKey = "voiceInput.preserveNewlines"
+    private let newlineModeKey = "voiceInput.newlineMode"
 
     @Published var enabledTerminals: Set<String> {
         didSet { saveEnabledTerminals() }
@@ -48,10 +76,9 @@ class Settings: ObservableObject {
         didSet { saveCustomTerminals() }
     }
 
-    /// true：换行用 Option+Enter 软换行键入，保住多行结构
-    /// false：换行统一替换为空格
-    @Published var preserveNewlines: Bool {
-        didSet { UserDefaults.standard.set(preserveNewlines, forKey: preserveNewlinesKey) }
+    /// 换行的键入方式，见 NewlineMode
+    @Published var newlineMode: NewlineMode {
+        didSet { UserDefaults.standard.set(newlineMode.rawValue, forKey: newlineModeKey) }
     }
 
     private init() {
@@ -69,8 +96,15 @@ class Settings: ObservableObject {
             customTerminals = []
         }
 
-        // 未设置过时默认开启（object(forKey:) 为 nil 表示从未写入）
-        preserveNewlines = UserDefaults.standard.object(forKey: preserveNewlinesKey) as? Bool ?? true
+        if let raw = UserDefaults.standard.string(forKey: newlineModeKey),
+           let mode = NewlineMode(rawValue: raw) {
+            newlineMode = mode
+        } else if let legacy = UserDefaults.standard.object(forKey: preserveNewlinesKey) as? Bool {
+            // 迁移 1.3.0 的布尔开关：原「保留换行」走 Ctrl+J，原「不保留」走空格
+            newlineMode = legacy ? .controlJ : .space
+        } else {
+            newlineMode = .controlJ
+        }
     }
 
     private func saveEnabledTerminals() {
