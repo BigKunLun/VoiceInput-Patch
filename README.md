@@ -27,7 +27,7 @@ Terminal / Claude Code ->  Receives keyboard input (not paste) -> no bracket pas
 
 ### Supported Terminals
 
-Ghostty, Terminal.app, iTerm2, Alacritty, WezTerm, kitty, Warp — configurable via the menu bar UI.
+Ghostty, Otty, Terminal.app, iTerm2, Alacritty, WezTerm, kitty, Warp — configurable via the menu bar UI.
 
 ### Installation
 
@@ -77,10 +77,25 @@ System Settings → Privacy & Security → Accessibility → Add and enable Voic
 3. Click the start button to begin interception
 4. Use voice input normally in the specified terminals — paste in non-whitelisted apps is unaffected
 
+5. Not in the list? Click **Add app…** and pick any `.app` — its bundle identifier is read automatically, no rebuild needed.
+
 ### Notes
 
-- Newlines in clipboard content are replaced with spaces to prevent premature command submission in terminal apps like Claude Code.
+- **Newlines**: with *Preserve line breaks* on (default), line breaks are typed as Option+Enter — a soft newline in Claude Code and most TUIs, so multi-line structure survives without submitting the command. Turn it off if your terminal submits on Option+Enter; newlines then become spaces.
+- **Clipboard write-back**: the sanitized single-line version of the text is written back to the clipboard, so a manual Cmd+Shift+V is always paste-safe.
+- **Escape hatch**: Cmd+Shift+V is never intercepted — use it when you want the terminal's native paste.
+- **Launch at login** uses `SMAppService`; the app must live in `/Applications`.
 - Text longer than 10,000 characters is truncated for safety.
+
+### Stable code signing (recommended when building from source)
+
+Ad-hoc signing produces a new identity on every build, so macOS treats the app as new and the granted Accessibility permission is lost. Create a fixed self-signed certificate once:
+
+```bash
+./scripts/create-signing-cert.sh
+```
+
+`build.sh` picks it up automatically on subsequent builds.
 
 ### Requirements
 
@@ -121,7 +136,7 @@ TypeService               ->  CGEvent keyboardSetUnicodeString 分块键入（�
 
 #### 终端
 
-预设支持 Ghostty、Terminal、iTerm2、Alacritty、WezTerm、kitty、Warp，可通过菜单栏界面勾选。
+预设支持 Ghostty、Otty、Terminal、iTerm2、Alacritty、WezTerm、kitty、Warp，可通过菜单栏界面勾选。
 
 ### 安装
 
@@ -171,10 +186,25 @@ xattr -cr VoiceInput.app
 3. 点击启动按钮开始拦截
 4. 在指定终端中正常使用语音输入即可，非白名单应用中的粘贴不受影响
 
+5. 列表里没有你的终端？点击 **添加应用…** 选择任意 `.app`，会自动读取其 bundleIdentifier，无需改代码重新编译。
+
 ### 注意事项
 
-- 剪贴板中的换行符会被替换为空格，以避免在 Claude Code 等终端中触发提前提交。
+- **换行处理**：默认开启「保留换行结构」，换行以 Option+Enter 键入——在 Claude Code 及多数 TUI 中是软换行，既保住多行结构又不会触发提交。若你的终端把 Option+Enter 当提交，关掉该选项即可回退为「换行转空格」。
+- **剪贴板写回**：处理后的单行安全版本会写回剪贴板，手动 Cmd+Shift+V 粘贴也不会卡住终端。
+- **逃生阀**：Cmd+Shift+V 永远不被拦截，需要终端原生粘贴时用它。
+- **开机自启**基于 `SMAppService`，要求应用位于「应用程序」文件夹。
 - 超过 10,000 字符的文本会被截断保护。
+
+### 固定签名身份（从源码构建时推荐）
+
+ad-hoc 签名每次构建都生成新的签名身份，macOS 会把它当成另一个应用，已授予的辅助功能权限随之失效。执行一次下面的脚本创建固定的自签名证书：
+
+```bash
+./scripts/create-signing-cert.sh
+```
+
+之后 `build.sh` 会自动使用该证书签名。
 
 ### 环境要求
 
@@ -192,14 +222,16 @@ VoiceInput-Patch/
 ├── Sources/
 │   ├── VoiceInputApp.swift          # SwiftUI 应用入口（MenuBarExtra）
 │   ├── Models/
-│   │   ├── AppState.swift           # 运行状态、统计数据
-│   │   └── Settings.swift           # 终端白名单、UserDefaults 持久化
+│   │   ├── AppState.swift           # 运行状态、剪贴板写回、开机自启
+│   │   └── Settings.swift           # 终端白名单（预设 + 自定义）、UserDefaults 持久化
 │   ├── Services/
 │   │   ├── InterceptService.swift   # CGEvent Tap 拦截 Cmd+V
-│   │   └── TypeService.swift        # CGEvent Unicode 分块键入
+│   │   └── TypeService.swift        # CGEvent Unicode 分块键入 + 软换行
 │   └── Views/
 │       └── MenuBarView.swift        # 菜单栏下拉菜单
 ├── build.sh                         # 构建脚本（swift build + 打包 .app）
+├── scripts/
+│   └── create-signing-cert.sh       # 创建固定自签名证书，避免权限反复失效
 └── docs/
     └── technical-notes.md           # 技术要点与决策记录
 ```

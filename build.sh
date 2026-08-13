@@ -38,9 +38,9 @@ cat > "${CONTENTS_DIR}/Info.plist" << 'EOF'
     <key>CFBundleDisplayName</key>
     <string>VoiceInput</string>
     <key>CFBundleVersion</key>
-    <string>1.2.1</string>
+    <string>1.3.0</string>
     <key>CFBundleShortVersionString</key>
-    <string>1.2.1</string>
+    <string>1.3.0</string>
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>LSMinimumSystemVersion</key>
@@ -60,12 +60,18 @@ chmod +x "${MACOS_DIR}/${APP_NAME}"
 # 代码签名：优先使用本地自签名证书（身份固定，辅助功能权限不会失效），
 # 找不到则 fallback 到 ad-hoc 签名（适用于 CI / 其他人的机器）
 echo "🔏 签名应用..."
-if security find-identity -v -p codesigning 2>/dev/null | grep -q "VoiceInput Dev"; then
-    codesign --force --deep --sign "VoiceInput Dev" "${APP_DIR}"
-    echo "   使用证书: VoiceInput Dev"
+# 按 SHA-1 指纹签名而非证书名：钥匙串中存在同名证书时，
+# 用名字签名会因 "ambiguous" 失败
+SIGN_ID=$(security find-identity -v -p codesigning 2>/dev/null \
+    | grep "VoiceInput Dev" | head -1 | awk '{print $2}')
+if [ -n "${SIGN_ID}" ]; then
+    codesign --force --deep --sign "${SIGN_ID}" "${APP_DIR}"
+    echo "   使用证书: VoiceInput Dev (${SIGN_ID})"
 else
     codesign --force --deep --sign - "${APP_DIR}"
     echo "   使用 ad-hoc 签名（未找到 VoiceInput Dev 证书）"
+    echo "   ⚠️  ad-hoc 签名每次构建身份都会变，辅助功能权限会失效"
+    echo "   💡 运行 ./scripts/create-signing-cert.sh 创建固定证书可一劳永逸"
 fi
 
 echo "✅ 构建完成: ${APP_DIR}"

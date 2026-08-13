@@ -7,6 +7,7 @@ import Foundation
 import Combine
 import Cocoa
 import ApplicationServices
+import ServiceManagement
 
 class AppState: ObservableObject {
     static let shared = AppState()
@@ -14,12 +15,15 @@ class AppState: ObservableObject {
     @Published var isRunning: Bool = false
     @Published var interceptCount: Int = 0
     @Published var lastPreview: String = ""
+    @Published var launchAtLogin: Bool = false
 
     let settings = Settings.shared
 
     private var interceptService: InterceptService?
 
-    private init() {}
+    private init() {
+        refreshLaunchAtLogin()
+    }
 
     func start() {
         guard !isRunning else { return }
@@ -34,12 +38,18 @@ class AppState: ObservableObject {
             whitelist: settings.enabledTerminalsLowercased,
             bundleIdWhitelist: settings.enabledBundleIds,
             onIntercept: { [weak self] text, completion in
-                DispatchQueue.main.async {
-                    self?.interceptCount += 1
-                    let truncated = text.count > TypeService.maxLength
-                    self?.lastPreview = String(text.prefix(60)) + (truncated ? " [已截断]" : "")
+                guard let self = self else {
+                    completion()
+                    return
                 }
-                TypeService.type(text, completion: completion)
+                let preserveNewlines = self.settings.preserveNewlines
+                DispatchQueue.main.async {
+                    self.interceptCount += 1
+                    let truncated = text.count > TypeService.maxLength
+                    self.lastPreview = String(text.prefix(60)) + (truncated ? " [已截断]" : "")
+                    self.writeBackSanitizedClipboard(text)
+                }
+                TypeService.type(text, preserveNewlines: preserveNewlines, completion: completion)
             }
         )
 
@@ -50,6 +60,43 @@ class AppState: ObservableObject {
             showStartFailedAlert()
         }
     }
+
+    func stop() {
+        interceptService?.stop()
+        interceptService = nil
+        isRunning = false
+    }
+
+    /// 把处理后的单行安全文本写回剪贴板，
+    /// 这样即使自动键入被打断，手动 Cmd+Shift+V 粘贴的也是不会卡终端的版本
+    private func writeBackSanitizedClipboard(_ text: String) {
+        let sanitized = TypeService.sanitizedForClipboard(text)
+        guard sanitized != text else { return }
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()
+        pasteboard.setString(sanitized, forType: .string)
+    }
+
+    // MARK: - 开机自启
+
+    func refreshLaunchAtLogin() {
+        launchAtLogin = SMAppService.mainApp.status == .enabled
+    }
+
+    func setLaunchAtLogin(_ enabled: Bool) {
+        do {
+            if enabled {
+                try SMAppService.mainApp.register()
+            } else {
+                try SMAppService.mainApp.unregister()
+            }
+        } catch {
+            showLaunchAtLoginFailedAlert(error)
+        }
+        refreshLaunchAtLogin()
+    }
+
+    // MARK: - 弹窗
 
     private func showAccessibilityAlert() {
         let alert = NSAlert()
@@ -73,10 +120,12 @@ class AppState: ObservableObject {
         alert.runModal()
     }
 
-    func stop() {
-        interceptService?.stop()
-        interceptService = nil
-        isRunning = false
+    private func showLaunchAtLoginFailedAlert(_ error: Error) {
+        let alert = NSAlert()
+        alert.messageText = "开机自启设置失败"
+        alert.informativeText = "\(error.localizedDescription)\n\n请确认 VoiceInput.app 已放入「应用程序」文件夹后重试。"
+        alert.alertStyle = .warning
+        alert.addButton(withTitle: "确定")
+        alert.runModal()
     }
-
 }
